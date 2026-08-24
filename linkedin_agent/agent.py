@@ -419,8 +419,7 @@ def agent_node(state: AgentState) -> AgentState:
     
     # Initialize the LLM with tools - Using Claude Sonnet 4
     llm = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
-        temperature=0,
+        model="claude-sonnet-5",
         max_tokens=4096
     )
     tools = [
