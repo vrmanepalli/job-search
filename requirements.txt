@@ -38,6 +38,9 @@ pydantic-settings>=2.1.0
 # Optional: Database for persistence
 # pymongo>=4.6.0
 # psycopg2-binary>=2.9.9
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+
 
 # Optional: Vector stores for RAG (future enhancement)
 # chromadb>=0.4.0
