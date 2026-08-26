@@ -11,6 +11,15 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 import operator
+from linkedin_agent.tools import (
+    optimize_resume_for_job,
+    save_job_application,
+    get_application_history,
+    track_application_status,
+    update_job_application_status,
+    store_master_resume,
+    retrieve_master_resume
+)
 
 # ============================================================================
 # STATE DEFINITION
@@ -366,6 +375,32 @@ def generate_application_package(
             "error": f"Error generating application package: {str(e)}"
         }
 
+    
+# ============================================================================
+# DECLARATION
+# ============================================================================
+
+AGENT_TOOLS = [
+    # Existing LinkedIn / application tools
+    search_linkedin_jobs,
+    get_job_details,
+    apply_to_job,
+    generate_cover_letter,
+    generate_resume,
+    generate_application_package,
+    get_my_profile,
+
+    # Master resume tools
+    store_master_resume,
+    retrieve_master_resume,
+    optimize_resume_for_job,
+
+    # Database-backed application tracking
+    save_job_application,
+    get_application_history,
+    track_application_status,
+    update_job_application_status,
+]
 
 @tool
 def get_my_profile() -> dict:
@@ -422,16 +457,8 @@ def agent_node(state: AgentState) -> AgentState:
         model="claude-sonnet-5",
         max_tokens=4096
     )
-    tools = [
-        search_linkedin_jobs,
-        get_job_details,
-        apply_to_job,
-        generate_cover_letter,
-        generate_resume,
-        generate_application_package,
-        get_my_profile
-    ]
-    llm_with_tools = llm.bind_tools(tools)
+
+    llm_with_tools = llm.bind_tools(AGENT_TOOLS)
     
     # System message for the agent
     system_message = SystemMessage(content="""
@@ -501,18 +528,8 @@ def create_linkedin_agent() -> StateGraph:
     
     # Add nodes
     workflow.add_node("agent", agent_node)
-    
-    # Create tools node
-    tools = [
-        search_linkedin_jobs,
-        get_job_details,
-        apply_to_job,
-        generate_cover_letter,
-        generate_resume,
-        generate_application_package,
-        get_my_profile
-    ]
-    workflow.add_node("tools", ToolNode(tools))
+
+    workflow.add_node("tools", ToolNode(AGENT_TOOLS))
     
     # Add edges
     workflow.add_edge(START, "agent")
@@ -540,7 +557,6 @@ def create_linkedin_agent() -> StateGraph:
 
 # Create the compiled graph for LangGraph server
 graph = create_linkedin_agent()
-
 
 # ============================================================================
 # TESTING / USAGE EXAMPLE

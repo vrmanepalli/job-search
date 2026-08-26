@@ -2,10 +2,24 @@
 Extended tools for LinkedIn job search and application.
 This file contains additional tools that can be added to the agent.
 """
-
+from linkedin_agent.application_repository import (
+    create_application,
+    get_applications,
+    get_application,
+    update_application_status,
+)
 from langchain_core.tools import tool
 from typing import List, Dict, Optional
 import json
+from langchain_anthropic import ChatAnthropic
+from langchain_core.tools import tool
+from linkedin_agent.resume_service import optimize_resume
+from linkedin_agent.resume_repository import (
+    save_resume_optimization,
+    save_master_resume,
+    get_master_resume,
+)
+
 
 # ============================================================================
 # PROFILE MANAGEMENT TOOLS
@@ -158,53 +172,166 @@ def analyze_job_match(job_description: str, user_profile: dict) -> dict:
 @tool
 def get_application_history(limit: int = 10) -> dict:
     """
-    Get history of job applications.
-    
+    Get history of job applications stored in PostgreSQL.
+
     Args:
-        limit: Maximum number of applications to return
-    
+        limit: Maximum number of applications to return.
+
     Returns:
-        List of past applications with status
+        List of past applications and their current status.
     """
-    # TODO: Fetch from database
-    mock_history = [
-        {
-            "job_id": "job_001",
-            "title": "AI Engineer",
-            "company": "TechCorp",
-            "applied_date": "2025-11-10",
-            "status": "under_review",
-            "last_updated": "2025-11-15"
+
+    try:
+        applications, total_count = get_applications(limit)
+
+        return {
+            "success": True,
+            "applications": applications,
+            "total_count": total_count,
         }
-    ]
-    
-    return {
-        "success": True,
-        "applications": mock_history[:limit],
-        "total_count": len(mock_history)
-    }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "applications": [],
+            "total_count": 0,
+            "error": str(e),
+        }
 
 
 @tool
 def track_application_status(job_id: str) -> dict:
     """
-    Check the status of a specific job application.
-    
+    Get the current status of an application stored in PostgreSQL.
+
     Args:
-        job_id: Unique identifier for the job
-    
+        job_id: Unique identifier for the job.
+
     Returns:
-        Current application status
+        Current application information and status.
     """
-    # TODO: Implement status tracking
-    return {
-        "job_id": job_id,
-        "status": "under_review",
-        "timeline": [
-            {"date": "2025-11-10", "event": "Application submitted"},
-            {"date": "2025-11-12", "event": "Application viewed by recruiter"}
-        ]
+
+    try:
+        application = get_application(job_id)
+
+        if not application:
+            return {
+                "success": False,
+                "job_id": job_id,
+                "message": "Application not found",
+            }
+
+        return {
+            "success": True,
+            "application": application,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "job_id": job_id,
+            "error": str(e),
+        }
+
+
+@tool
+def save_job_application(
+    job_id: str,
+    title: str,
+    company: str,
+    job_url: str = "",
+    status: str = "saved",
+    notes: str = "",
+) -> dict:
+    """
+    Save a job application to PostgreSQL.
+
+    Args:
+        job_id: Unique job identifier.
+        title: Job title.
+        company: Company name.
+        job_url: URL for the job posting.
+        status: Current application status.
+        notes: Optional notes.
+
+    Returns:
+        Saved application information.
+    """
+
+    try:
+        application = create_application(
+            job_id=job_id,
+            title=title,
+            company=company,
+            job_url=job_url or None,
+            status=status,
+            notes=notes or None,
+        )
+
+        return {
+            "success": True,
+            "application": application,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+@tool
+def update_job_application_status(
+    job_id: str,
+    status: str,
+) -> dict:
+    """
+    Update the status of an existing application.
+
+    Valid examples:
+    saved, applied, recruiter_screen, interview,
+    offer, rejected, withdrawn
+    """
+
+    allowed_statuses = {
+        "saved",
+        "applied",
+        "under_review",
+        "recruiter_screen",
+        "interview",
+        "offer",
+        "rejected",
+        "withdrawn",
     }
+
+    if status not in allowed_statuses:
+        return {
+            "success": False,
+            "error": f"Invalid status: {status}",
+            "allowed_statuses": sorted(allowed_statuses),
+        }
+
+    try:
+        application = update_application_status(
+            job_id,
+            status,
+        )
+
+        if not application:
+            return {
+                "success": False,
+                "message": f"No application found for {job_id}",
+            }
+
+        return {
+            "success": True,
+            "application": application,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
 
 
 # ============================================================================
@@ -240,26 +367,105 @@ def find_referrals(company_name: str) -> dict:
 # ============================================================================
 # RESUME AND COVER LETTER TOOLS
 # ============================================================================
+llm = ChatAnthropic(
+    model="claude-sonnet-5",
+    max_tokens=4096
+)
 
 @tool
-def optimize_resume_for_job(job_description: str, current_resume: str) -> str:
+def store_master_resume(
+    name: str,
+    resume_text: str,
+) -> dict:
     """
-    Optimize resume content for a specific job posting.
-    
-    Args:
-        job_description: The job description
-        current_resume: User's current resume text
-    
-    Returns:
-        Optimized resume text with suggestions
+    Store the user's master resume.
+
+    This resume becomes the source of truth for
+    future job-specific resume optimization.
     """
-    # TODO: Use LLM to optimize resume
-    return """
-    Optimized Resume Suggestions:
-    1. Add more specific metrics to your achievements
-    2. Highlight Python and ML experience in first bullet
-    3. Include keywords: "deep learning", "NLP", "production systems"
+
+    try:
+        resume = save_master_resume(
+            name=name,
+            resume_text=resume_text,
+        )
+
+        return {
+            "success": True,
+            "resume": resume,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+@tool
+def retrieve_master_resume() -> dict:
     """
+    Retrieve the user's currently stored master resume.
+    """
+
+    try:
+        resume = get_master_resume()
+
+        if not resume:
+            return {
+                "success": False,
+                "message": "No master resume has been stored."
+            }
+
+        return {
+            "success": True,
+            "resume": resume,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+@tool
+def optimize_resume_for_job(
+    resume_text: str,
+    job_description: str,
+    job_id: str = "",
+    company: str = "",
+    title: str = "",
+) -> dict:
+    """
+    Optimize a resume for a specific job and save the result.
+    """
+
+    try:
+        result = optimize_resume(
+            resume_text=resume_text,
+            job_description=job_description,
+        )
+
+        optimization_id = save_resume_optimization(
+            original_resume=resume_text,
+            job_description=job_description,
+            optimized_resume=result.optimized_resume,
+            match_score=result.match_score,
+            job_id=job_id or None,
+            company=company or None,
+            title=title or None,
+        )
+
+        return {
+            "success": True,
+            "optimization_id": optimization_id,
+            **result.model_dump(),
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+        }
 
 
 @tool
