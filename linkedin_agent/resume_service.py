@@ -5,6 +5,9 @@ from langchain_anthropic import ChatAnthropic
 
 from linkedin_agent.resume_models import ResumeOptimizationResult
 
+from linkedin_agent.resume_validator import (
+    validate_resume,
+)
 
 # Load environment variables from .env
 # load_dotenv()
@@ -70,3 +73,59 @@ Return:
 """
 
     return structured_llm.invoke(prompt)
+
+def optimize_and_validate_resume(
+    resume_text: str,
+    job_description: str,
+):
+    optimization = optimize_resume(
+        resume_text=resume_text,
+        job_description=job_description,
+    )
+
+    validation = validate_resume(
+        original_resume=resume_text,
+        optimized_resume=optimization.optimized_resume,
+    )
+
+    return optimization, validation
+
+
+def correct_optimized_resume(
+    original_resume: str,
+    optimized_resume: str,
+    unsupported_claims: list,
+):
+
+    issues = "\n".join(
+        f"- {issue.claim}: {issue.reason}"
+        for issue in unsupported_claims
+    )
+
+    prompt = f"""
+Correct the optimized resume.
+
+The fact checker found unsupported claims.
+
+UNSUPPORTED CLAIMS:
+
+{issues}
+
+ORIGINAL RESUME:
+
+{original_resume}
+
+OPTIMIZED RESUME:
+
+{optimized_resume}
+
+Remove or rewrite every unsupported claim.
+
+Do not introduce any new facts.
+
+Return the corrected resume only.
+"""
+
+    response = llm.invoke(prompt)
+
+    return response.content

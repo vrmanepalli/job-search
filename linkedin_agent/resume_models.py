@@ -17,3 +17,21 @@ class ResumeOptimizationResult(BaseModel):
     optimized_summary: str
 
     optimized_resume: str
+
+class UnsupportedClaim(BaseModel):
+    claim: str
+    reason: str
+    severity: str
+
+
+class ResumeValidationResult(BaseModel):
+    valid: bool
+
+    confidence_score: int = Field(
+        ge=0,
+        le=100
+    )
+
+    unsupported_claims: list[UnsupportedClaim]
+
+    summary: str

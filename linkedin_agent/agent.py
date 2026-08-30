@@ -20,6 +20,7 @@ from linkedin_agent.tools import (
     store_master_resume,
     retrieve_master_resume
 )
+from linkedin_agent.job_repository import save_or_update_job
 
 # ============================================================================
 # STATE DEFINITION
@@ -153,6 +154,19 @@ def get_job_details(job_id: str) -> dict:
         details = scraper.get_job_details(job_id)
         
         if details:
+            description=(
+                details.get("description")
+                or details.get("job_description")
+            )
+            save_or_update_job(
+                external_job_id=str(job_id),
+                title=details.get("title"),
+                company=details.get("company"),
+                location=details.get("location"),
+                description=description,
+                job_url=details.get("job_url"),
+                source="linkedin",
+)
             return {
                 "success": True,
                 "job_id": job_id,

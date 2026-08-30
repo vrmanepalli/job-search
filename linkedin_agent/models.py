@@ -119,7 +119,85 @@ class ResumeOptimization(Base):
         Integer
     )
 
+    # NEW
+    validation_passed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    # NEW
+    validation_score: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    # NEW
+    validation_summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # NEW
+    validation_issues_json: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
+    )
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    external_job_id: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+    )
+
+    title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    company: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    location: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    job_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    source: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        default="linkedin",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )

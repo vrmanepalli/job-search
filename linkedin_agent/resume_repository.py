@@ -64,6 +64,10 @@ def save_resume_optimization(
     job_id: str | None = None,
     company: str | None = None,
     title: str | None = None,
+    validation_passed: bool = False,
+    validation_score: int | None = None,
+    validation_summary: str | None = None,
+    validation_issues_json: str | None = None,
 ) -> int:
 
     with SessionLocal() as db:
@@ -76,6 +80,10 @@ def save_resume_optimization(
             job_description=job_description,
             optimized_resume=optimized_resume,
             match_score=match_score,
+            validation_passed=validation_passed,
+            validation_score=validation_score,
+            validation_summary=validation_summary,
+            validation_issues_json=validation_issues_json,
         )
 
         db.add(record)
