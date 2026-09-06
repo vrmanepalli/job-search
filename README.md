@@ -26,10 +26,10 @@ langgraph dev
 - ✅ AI-powered cover letter generation
 - ✅ Conversational interface for job hunting
 - ✅ Tool-calling agent architecture with LangGraph
+- ✅ Resume optimization for specific jobs
 
 ### Planned Features (Extensible)
 - 🔄 Automated job applications via LinkedIn Easy Apply
-- 🔄 Resume optimization for specific jobs
 - 🔄 Application tracking and status monitoring
 - 🔄 Referral network analysis
 - 🔄 Interview preparation assistance
