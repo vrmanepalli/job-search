@@ -12,13 +12,14 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
 import operator
 from linkedin_agent.tools import (
-    optimize_resume_for_job,
+    optimize_resume_for_job_service,
     save_job_application,
     get_application_history,
     track_application_status,
     update_job_application_status,
     store_master_resume,
-    retrieve_master_resume
+    retrieve_master_resume,
+    prepare_job_application,
 )
 from linkedin_agent.job_repository import save_or_update_job
 
@@ -407,13 +408,16 @@ AGENT_TOOLS = [
     # Master resume tools
     store_master_resume,
     retrieve_master_resume,
-    optimize_resume_for_job,
+    optimize_resume_for_job_service,
 
     # Database-backed application tracking
     save_job_application,
     get_application_history,
     track_application_status,
     update_job_application_status,
+
+    #Advanced Tools
+    prepare_job_application,
 ]
 
 @tool

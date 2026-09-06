@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Easy Apply Test</title>
+</head>
+
+<body>
+
+<h1>Test Job Application</h1>
+
+<form>
+
+    <label for="phone">Phone Number</label>
+    <input
+        id="phone"
+        name="phone"
+        type="tel"
+        required
+    />
+
+    <br><br>
+
+    <label for="java">
+        How many years of Java experience do you have?
+    </label>
+    <input
+        id="java"
+        name="java_years"
+        type="number"
+        required
+    />
+
+    <br><br>
+
+    <label for="sponsorship">
+        Will you require visa sponsorship?
+    </label>
+
+    <select
+        id="sponsorship"
+        name="sponsorship"
+        required
+    >
+        <option value="">Select</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+    </select>
+
+    <br><br>
+
+    <label for="why_role">
+        Why are you interested in this role?
+    </label>
+
+    <textarea
+        id="why_role"
+        name="why_role"
+        maxlength="500"
+    ></textarea>
+
+    <br><br>
+
+    <label for="resume">
+        Upload Resume
+    </label>
+
+    <input
+        id="resume"
+        name="resume"
+        type="file"
+        accept=".pdf,.doc,.docx"
+    />
+
+</form>
+
+</body>
+</html>

@@ -11,6 +11,7 @@ def create_application(
     title: str,
     company: str,
     job_url: str | None = None,
+    application_url: str | None = None,
     status: str = "saved",
     notes: str | None = None,
 ) -> dict:
@@ -31,6 +32,7 @@ def create_application(
             title=title,
             company=company,
             job_url=job_url,
+            application_url=application_url,
             status=status,
             notes=notes,
         )
@@ -82,6 +84,33 @@ def get_application(job_id: str) -> dict | None:
         return application_to_dict(application)
 
 
+def update_application_url(
+    job_id: str,
+    application_url: str,
+) -> dict | None:
+
+    with SessionLocal() as db:
+
+        application = db.scalar(
+            select(Application)
+            .where(
+                Application.job_id == job_id
+            )
+        )
+
+        if not application:
+            return None
+
+        application.application_url = application_url
+
+        db.commit()
+        db.refresh(application)
+
+        return application_to_dict(
+            application
+        )
+    
+
 def update_application_status(
     job_id: str,
     status: str,
@@ -116,6 +145,7 @@ def application_to_dict(application: Application) -> dict:
         "title": application.title,
         "company": application.company,
         "job_url": application.job_url,
+        "application_url": application.application_url,
         "status": application.status,
         "notes": application.notes,
         "applied_date": (
@@ -123,6 +153,15 @@ def application_to_dict(application: Application) -> dict:
             if application.applied_at
             else None
         ),
-        "created_at": application.created_at.isoformat(),
-        "last_updated": application.updated_at.isoformat(),
+        "created_at": (
+            application.created_at.isoformat()
+            if application.created_at
+            else None
+        ),
+
+        "last_updated": (
+            application.updated_at.isoformat()
+            if application.updated_at
+            else None
+        ),
     }

@@ -191,6 +191,26 @@ class Job(Base):
         default="linkedin",
     )
 
+    application_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        default="saved",
+    )
+
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    applied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -200,4 +220,26 @@ class Job(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+class ApplicationProfile(Base):
+    __tablename__ = "application_profile"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    question_key: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+    )
+
+    answer: Mapped[str] = mapped_column(
+        Text
+    )
+
+    verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
     )
