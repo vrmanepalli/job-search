@@ -1,10 +1,22 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from .database import SessionLocal
 from .models import Application
 
+import re
+
+
+def extract_linkedin_job_id(value: str) -> str:
+    match = re.search(r"(\d{8,})$", value)
+
+    if not match:
+        raise ValueError(
+            f"Could not extract LinkedIn job ID from: {value}"
+        )
+
+    return match.group(1)
 
 def create_application(
     job_id: str,
@@ -27,8 +39,10 @@ def create_application(
         if existing:
             return application_to_dict(existing)
 
+        new_job_id = extract_linkedin_job_id(job_id)
+
         application = Application(
-            job_id=job_id,
+            job_id=new_job_id,
             title=title,
             company=company,
             job_url=job_url,
@@ -84,6 +98,7 @@ def get_application(job_id: str) -> dict | None:
         return application_to_dict(application)
 
 
+
 def update_application_url(
     job_id: str,
     application_url: str,
@@ -98,11 +113,21 @@ def update_application_url(
             )
         )
 
+        if application is None:
+            print(
+                "ERROR: application record is none"
+            )
+            return None
+
         if not application:
+            print(
+                            "ERROR: application record not found"
+                        )
             return None
 
         application.application_url = application_url
-
+        db.add(application)
+        db.flush()
         db.commit()
         db.refresh(application)
 
@@ -131,6 +156,7 @@ def update_application_status(
         if status == "applied" and application.applied_at is None:
             application.applied_at = datetime.now(timezone.utc)
 
+    
         db.commit()
         db.refresh(application)
 

@@ -31,6 +31,11 @@ class Application(Base):
         nullable=True,
     )
 
+    application_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     status: Mapped[str] = mapped_column(
         String(50),
         default="saved",
