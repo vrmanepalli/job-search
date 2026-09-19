@@ -2,39 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from linkedin_agent.browser.providers.base import (
+    ApplicationProvider,
+)
 
-class ICIMSApplicationProvider:
+from linkedin_agent.browser.application_filler import (
+    fill_application_form,
+)
+
+
+class ICIMSApplicationProvider(ApplicationProvider):
 
     name = "icims"
-
-    def inspect(
-        self,
-        page,
-    ) -> list[dict[str, Any]]:
-
-        raise NotImplementedError
-
-    def fill(
-        self,
-        page,
-        prepared_application,
-    ) -> dict:
-
-        raise NotImplementedError
-
-    def detect_blocker(
-        self,
-        page,
-    ) -> dict | None:
-
-        raise NotImplementedError
-
-    def verify_submission(
-        self,
-        page,
-    ) -> bool:
-
-        raise NotImplementedError
 
 
     def get_active_context(self, page):
@@ -78,6 +57,7 @@ class ICIMSApplicationProvider:
     def _find_label(
         self,
         page,
+        context,
         element,
     ) -> str | None:
 
@@ -87,7 +67,7 @@ class ICIMSApplicationProvider:
 
         if element_id:
 
-            label = page.locator(
+            label = context.locator(
                 f'label[for="{element_id}"]'
             )
 
@@ -177,6 +157,7 @@ class ICIMSApplicationProvider:
 
                 label = self._find_label(
                     page,
+                    context,
                     element,
                 )
 
@@ -201,25 +182,20 @@ class ICIMSApplicationProvider:
         return fields
 
     def detect_page_state(self, page) -> str:
+        context = self.get_active_context(page)
+
         url = page.url.lower()
         title = page.title().lower()
 
         try:
-            context = self.get_active_context(page)
-
-            form_fields = context.locator(
-                "input, textarea, select"
-            ).count()
-            
-            body_text = page.locator("body").inner_text().lower()
+            body_text = (
+                context.locator("body")
+                .inner_text()
+                .lower()
+            )
         except Exception:
             body_text = ""
 
-        print("DEBUG TITLE:", title)
-        print("DEBUG URL:", url)
-        print("DEBUG BODY:", body_text[:1000])
-
-        # Hard blockers / manual steps
         if (
             "captcha" in body_text
             or "verify you are human" in body_text
@@ -230,17 +206,9 @@ class ICIMSApplicationProvider:
         if (
             "verification code" in body_text
             or "two-factor" in body_text
-            or "2-factor" in body_text
+            or "authentication code" in body_text
         ):
             return "mfa"
-
-        # iCIMS login page
-        if (
-            "/login" in url
-            or "login" in title
-            or "sign in" in body_text
-        ):
-            return "login"
 
         if (
             "create account" in body_text
@@ -249,10 +217,11 @@ class ICIMSApplicationProvider:
         ):
             return "account_creation"
 
-        # Application form
-        file_inputs = page.locator('input[type="file"]').count()
+        file_inputs = context.locator(
+            'input[type="file"]'
+        ).count()
 
-        form_fields = page.locator(
+        form_fields = context.locator(
             "input, textarea, select"
         ).count()
 
@@ -262,11 +231,14 @@ class ICIMSApplicationProvider:
         if form_fields > 2:
             return "application_form"
 
-        # Job page / apply gateway
         if (
-            "apply" in body_text
-            or "/jobs/" in url
+            "/login" in url
+            or "login" in title
+            or "sign in" in body_text
         ):
+            return "login"
+
+        if "apply" in body_text:
             return "job_page"
 
         return "unknown"
@@ -311,3 +283,60 @@ class ICIMSApplicationProvider:
             "message": message,
             "provider": "icims",
         }
+
+    def fill(
+        self,
+        page,
+        prepared_application,
+    ) -> dict:
+
+        context = self.get_active_context(page)
+
+        fields = self.inspect(page)
+
+        answers = {}
+
+        for item in prepared_application.answers:
+            if (
+                item.answer is not None
+                and not item.requires_user_input
+            ):
+                if item.normalized_key:
+                    answers[
+                        item.normalized_key
+                    ] = item.answer
+
+                answers[
+                    item.question
+                ] = item.answer
+
+        return fill_application_form(
+            page=context,
+            fields=fields,
+            answers=answers,
+            resume_path=prepared_application.resume_path,
+        )
+
+    def verify_submission(self, page) -> bool:
+        context = self.get_active_context(page)
+
+        try:
+            text = (
+                context.locator("body")
+                .inner_text()
+                .lower()
+            )
+        except Exception:
+            return False
+
+        phrases = [
+            "application submitted",
+            "application received",
+            "thank you for applying",
+            "thank you for your application",
+        ]
+
+        return any(
+            phrase in text
+            for phrase in phrases
+        )

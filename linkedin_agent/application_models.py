@@ -36,9 +36,15 @@ class PreparedApplication(BaseModel):
 
     cover_letter: str | None = None
 
-    answers: list[ApplicationAnswer] = []
+    answers: list[
+        ApplicationAnswer
+    ] = Field(
+        default_factory=list
+    )
 
-    missing_answers: list[str] = []
+    missing_answers: list[str] = Field(
+        default_factory=list
+    )
 
     ready_for_review: bool = False
 

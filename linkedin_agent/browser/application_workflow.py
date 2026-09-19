@@ -6,9 +6,9 @@ from linkedin_agent.browser.application_filler import (
     fill_application_form,
 )
 
-from linkedin_agent.browser.browser_client import BrowserClient
-from linkedin_agent.browser.application_form import inspect_form
-from linkedin_agent.browser.application_filler import fill_application_form
+from linkedin_agent.browser.browser_client import (
+    BrowserClient,
+)
 
 
 def fill_prepared_application(
@@ -22,27 +22,24 @@ def fill_prepared_application(
     Does NOT submit the application.
     """
 
-    # 1. Inspect the form currently displayed
+    # 1. Inspect current form
     fields = inspect_form(page)
 
-    # 2. Convert ApplicationAnswer objects into the dictionary
-    #    expected by fill_application_form()
+    # 2. Build answer map
     answers = {}
 
     for item in prepared.answers:
-
         if (
             item.answer is not None
             and not item.requires_user_input
         ):
-
             if item.normalized_key:
                 answers[item.normalized_key] = item.answer
 
-            # Label fallback
+            # fallback to original question text
             answers[item.question] = item.answer
 
-    # 3. Fill fields + upload generated resume
+    # 3. Fill form
     fill_result = fill_application_form(
         page=page,
         fields=fields,
@@ -50,6 +47,7 @@ def fill_prepared_application(
         resume_path=prepared.resume_path,
     )
 
+    # 4. Build common result
     return {
         "success": fill_result["success"],
         "job_id": prepared.job_id,
@@ -61,14 +59,16 @@ def fill_prepared_application(
         ),
     }
 
+
 def open_and_fill_prepared_application(
     job_url: str,
     prepared,
 ) -> dict:
     """
-    Open an application page, inspect it, and fill supported fields.
+    Open an application page and reuse
+    fill_prepared_application().
 
-    Does not submit the application.
+    Does NOT submit the application.
     """
 
     browser = BrowserClient()
@@ -76,27 +76,15 @@ def open_and_fill_prepared_application(
     try:
         page = browser.start()
 
-        page.goto(job_url)
+        page.goto(
+            job_url,
+            wait_until="domcontentloaded",
+        )
 
-        fields = inspect_form(page)
-
-        answers = {}
-
-        for item in prepared.answers:
-            if (
-                item.answer is not None
-                and not item.requires_user_input
-            ):
-                if item.normalized_key:
-                    answers[item.normalized_key] = item.answer
-
-                answers[item.question] = item.answer
-
-        result = fill_application_form(
+        # Reuse common filling logic
+        result = fill_prepared_application(
             page=page,
-            fields=fields,
-            answers=answers,
-            resume_path=prepared.resume_path,
+            prepared=prepared,
         )
 
         input(
@@ -104,16 +92,7 @@ def open_and_fill_prepared_application(
             "Press Enter when finished..."
         )
 
-        return {
-            "success": result["success"],
-            "job_id": prepared.job_id,
-            "fields_detected": len(fields),
-            "fill_result": result,
-            "ready_for_review": (
-                result["success"]
-                and len(prepared.missing_answers) == 0
-            ),
-        }
+        return result
 
     finally:
         browser.close()

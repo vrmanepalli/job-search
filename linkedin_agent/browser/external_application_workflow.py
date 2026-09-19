@@ -10,6 +10,14 @@ from linkedin_agent.browser.providers.generic import (
     GenericApplicationProvider,
 )
 
+from linkedin_agent.browser.providers.factory import (
+    get_provider,
+)
+
+from linkedin_agent.application_status import (
+    ApplicationStatus,
+)
+
 
 def apply_external_job(
     application_url: str,
@@ -26,9 +34,9 @@ def apply_external_job(
             wait_until="domcontentloaded",
         )
 
-        provider_name = detect_provider(
-            page
-        )
+        provider_name = detect_provider(page)
+
+        provider = get_provider(provider_name)
 
         provider = GenericApplicationProvider()
 
@@ -40,7 +48,7 @@ def apply_external_job(
             return {
                 "success": False,
                 "submitted": False,
-                "status": "manual_required",
+                "status": ApplicationStatus.MANUAL_REQUIRED,
                 "provider": provider_name,
                 "blocker": blocker,
             }
@@ -50,11 +58,25 @@ def apply_external_job(
             prepared_application,
         )
 
+        # Stop here for user review
+        if not fill_result["success"]:
+            return {
+                "success": False,
+                "submitted": False,
+                "status": ApplicationStatus.NEEDS_USER_INPUT ,
+                "provider": provider_name,
+                "fill_result": fill_result,
+            }
+
+        # At this stage the application is only prepared.
+        # It has NOT been submitted.
+        status = ApplicationStatus.READY_FOR_REVIEW
+
         return {
             "success": fill_result["success"],
             "submitted": False,
             "provider": provider_name,
-            "status": "ready_for_review",
+            "status": status,
             "fill_result": fill_result,
             "current_url": page.url,
         }

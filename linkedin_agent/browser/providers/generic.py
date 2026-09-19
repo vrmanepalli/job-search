@@ -6,8 +6,12 @@ from linkedin_agent.browser.application_filler import (
     fill_application_form,
 )
 
+from linkedin_agent.browser.providers.base import (
+    ApplicationProvider,
+)
 
-class GenericApplicationProvider:
+
+class GenericApplicationProvider(ApplicationProvider):
 
     def inspect(self, page) -> list[dict]:
         return inspect_form(page)
@@ -89,3 +93,23 @@ class GenericApplicationProvider:
                     }
 
         return None
+
+    def verify_submission(self, page) -> bool:
+        try:
+            text = page.locator(
+                "body"
+            ).inner_text().lower()
+        except Exception:
+            return False
+
+        phrases = [
+            "application submitted",
+            "application received",
+            "thank you for applying",
+            "thank you for your application",
+        ]
+
+        return any(
+            phrase in text
+            for phrase in phrases
+        )

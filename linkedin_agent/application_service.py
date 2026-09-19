@@ -20,6 +20,11 @@ from linkedin_agent.resume_service import (
     optimize_resume_for_job_service,
 )
 
+class ApplicationPreparationError(
+    RuntimeError
+):
+    pass
+
 def prepare_application(
     job: dict,
     master_resume: dict,
@@ -35,13 +40,12 @@ def prepare_application(
     )
 
     if not optimization.get("success"):
-        return {
-            "success": False,
-            "error": optimization.get(
+        raise ApplicationPreparationError(
+            optimization.get(
                 "error",
-                "Resume optimization failed"
-            ),
-        }
+                "Resume optimization failed",
+            )
+        )
 
     # 2. Get generated resume path
     resume_path = optimization.get(
@@ -72,6 +76,9 @@ def prepare_application(
         company=job["company"],
         title=job["title"],
         job_url=job.get("job_url"),
+        application_url=job.get(
+            "application_url"
+        ),
         answers=answers,
         missing_answers=missing_answers,
         ready_for_review=len(missing_answers) == 0,

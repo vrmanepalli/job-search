@@ -196,26 +196,6 @@ class Job(Base):
         default="linkedin",
     )
 
-    application_url: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    status: Mapped[str] = mapped_column(
-        String(50),
-        default="saved",
-    )
-
-    notes: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
-    applied_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
