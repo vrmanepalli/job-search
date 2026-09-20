@@ -10,6 +10,9 @@ from linkedin_agent.browser.application_filler import (
     fill_application_form,
 )
 
+from linkedin_agent.application_answer_service import (
+    build_verified_answer_map,
+)
 
 class ICIMSApplicationProvider(ApplicationProvider):
 
@@ -294,21 +297,9 @@ class ICIMSApplicationProvider(ApplicationProvider):
 
         fields = self.inspect(page)
 
-        answers = {}
-
-        for item in prepared_application.answers:
-            if (
-                item.answer is not None
-                and not item.requires_user_input
-            ):
-                if item.normalized_key:
-                    answers[
-                        item.normalized_key
-                    ] = item.answer
-
-                answers[
-                    item.question
-                ] = item.answer
+        answers = build_verified_answer_map(
+            prepared_application
+        )
 
         return fill_application_form(
             page=context,
@@ -318,18 +309,20 @@ class ICIMSApplicationProvider(ApplicationProvider):
         )
 
     def verify_submission(self, page) -> bool:
+
         context = self.get_active_context(page)
 
         try:
-            text = (
-                context.locator("body")
+            body_text = (
+                context
+                .locator("body")
                 .inner_text()
                 .lower()
             )
         except Exception:
             return False
 
-        phrases = [
+        confirmation_phrases = [
             "application submitted",
             "application received",
             "thank you for applying",
@@ -337,6 +330,65 @@ class ICIMSApplicationProvider(ApplicationProvider):
         ]
 
         return any(
-            phrase in text
-            for phrase in phrases
+            phrase in body_text
+            for phrase in confirmation_phrases
         )
+
+    def submit(self, page) -> dict:
+
+        context = self.get_active_context(page)
+
+        submit_selectors = [
+            'button:has-text("Submit")',
+            'input[type="submit"]',
+            'button[type="submit"]',
+        ]
+
+        for selector in submit_selectors:
+
+            locator = context.locator(selector)
+
+            if locator.count() == 0:
+                continue
+
+            button = locator.first
+
+            try:
+                if not button.is_visible():
+                    continue
+
+                text = (
+                    button.inner_text()
+                    if button.evaluate(
+                        "(el) => el.tagName.toLowerCase() === 'button'"
+                    )
+                    else button.get_attribute("value")
+                )
+
+                print(
+                    f"Found submit candidate: "
+                    f"{text!r}"
+                )
+
+                button.click()
+
+                page.wait_for_timeout(2000)
+
+                return {
+                    "success": True,
+                    "clicked": True,
+                    "button_text": text,
+                }
+
+            except Exception as exc:
+                return {
+                    "success": False,
+                    "clicked": False,
+                    "error": str(exc),
+                }
+
+        return {
+            "success": False,
+            "clicked": False,
+            "error": "Submit button not found",
+        }

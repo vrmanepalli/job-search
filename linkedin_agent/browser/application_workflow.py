@@ -1,3 +1,4 @@
+from linkedin_agent.application_status import ApplicationStatus
 from linkedin_agent.browser.application_form import (
     inspect_form,
 )
@@ -10,6 +11,14 @@ from linkedin_agent.browser.browser_client import (
     BrowserClient,
 )
 
+from linkedin_agent.browser.application_route import (
+    detect_application_route,
+)
+
+from linkedin_agent.browser.external_application_workflow import (
+    prepare_external_application,
+    submit_external_application,
+)
 
 def fill_prepared_application(
     page,
@@ -81,16 +90,87 @@ def open_and_fill_prepared_application(
             wait_until="domcontentloaded",
         )
 
-        # Reuse common filling logic
-        result = fill_prepared_application(
-            page=page,
-            prepared=prepared,
-        )
+        route = detect_application_route(page)
 
-        input(
-            "Review the application in the browser. "
-            "Press Enter when finished..."
-        )
+        print(f"Application route: {route}")
+
+        if route == "external":
+            application_url = prepared.application_url
+
+            if not application_url:
+                return {
+                    "success": False,
+                    "submitted": False,
+                    "status": "external_application_url_missing",
+                    "job_id": prepared.job_id,
+                }
+
+            result = prepare_external_application(
+                page=page,
+                application_url=application_url,
+                prepared_application=prepared,
+            )
+            if result.get("status") != ApplicationStatus.READY_FOR_REVIEW:
+                return result
+
+        elif route == "easy_apply":
+            result = fill_prepared_application(
+                page=page,
+                prepared=prepared,
+            )
+            input(
+                "Review the application in the browser. "
+                "Press Enter when finished..."
+            )
+
+        else:
+            return {
+                        "success": False,
+                        "submitted": False,
+                        "status": "application_unavailable",
+                        "job_id": prepared.job_id,
+                    }
+        
+        print()
+        print("==========================")
+        print("APPLICATION RESULT")
+        print("==========================")
+        print(result)
+
+        status = result.get("status")
+
+        if status == ApplicationStatus.READY_FOR_REVIEW:
+            print()
+            print("==========================")
+            print("READY FOR REVIEW")
+            print("==========================")
+            print()
+            print("The application has been filled.")
+            print("It has NOT been submitted.")
+            print()
+            print("Review the application in the browser.")
+            print()
+
+
+            approval = input(
+                "Type SUBMIT to submit this application, "
+                "or press Enter to stop: "
+            ).strip()
+
+            if approval != "SUBMIT":
+                return {
+                    **result,
+                    "submitted": False,
+                    "status": ApplicationStatus.READY_FOR_REVIEW,
+                }
+
+            submission_result = submit_external_application(
+                page=page,
+                provider_name=result["provider"],
+                job_id=prepared.job_id,
+            )
+
+            return submission_result
 
         return result
 

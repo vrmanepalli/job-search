@@ -22,3 +22,12 @@ class ApplicationProvider(ABC):
     @abstractmethod
     def verify_submission(self, page) -> bool:
         pass
+
+    @abstractmethod
+    def submit(self, page) -> dict:
+        """
+        Perform the final application submission.
+
+        Must only be called after user review/approval.
+        """
+        ...

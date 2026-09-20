@@ -20,6 +20,12 @@ from linkedin_agent.resume_service import (
     optimize_resume_for_job_service,
 )
 
+from linkedin_agent.job_eligibility_service import (
+    check_job_eligibility,
+)
+
+from linkedin_agent.application_repository import get_application
+
 class ApplicationPreparationError(
     RuntimeError
 ):
@@ -34,7 +40,52 @@ def prepare_application(
     if questions is None:
         questions = []
 
-    # 1. Optimize resume for this job
+   # -------------------------------------------------
+    # 1. Validate the job passed into this function
+    # -------------------------------------------------
+
+    if not job:
+        raise ValueError("Job data is required")
+
+    job_id = (
+        job.get("job_id")
+        or job.get("external_job_id")
+    )
+
+    if not job_id:
+        raise ValueError(
+            "Job is missing job_id/external_job_id"
+        )
+
+    application_record = get_application(job_id)
+
+    application_url = (
+        application_record.get("application_url")
+        if application_record
+        else None
+    )
+
+    # -------------------------------------------------
+    # 2. Eligibility check BEFORE resume optimization
+    # -------------------------------------------------
+
+    eligibility = check_job_eligibility(job)
+
+    if not eligibility["eligible"]:
+        raise ValueError(
+            f"Job failed eligibility check: "
+            f"{eligibility['reason']} "
+            f"Matched: {eligibility['matched_text']}"
+        )
+
+    if eligibility["requires_review"]:
+        raise ValueError(
+            f"Job requires eligibility review before resume optimization: "
+            f"{eligibility['reason']} "
+            f"Matched: {eligibility['matched_text']}"
+        )
+
+    # Only optimize after eligibility passes.
     optimization = optimize_resume_for_job_service(
         job_id=job["job_id"]
     )
@@ -76,9 +127,7 @@ def prepare_application(
         company=job["company"],
         title=job["title"],
         job_url=job.get("job_url"),
-        application_url=job.get(
-            "application_url"
-        ),
+        application_url=application_url,
         answers=answers,
         missing_answers=missing_answers,
         ready_for_review=len(missing_answers) == 0,

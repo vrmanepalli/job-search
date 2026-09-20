@@ -10,6 +10,10 @@ from linkedin_agent.browser.providers.base import (
     ApplicationProvider,
 )
 
+from linkedin_agent.application_answer_service import (
+    build_verified_answer_map,
+)
+
 
 class GenericApplicationProvider(ApplicationProvider):
 
@@ -24,24 +28,10 @@ class GenericApplicationProvider(ApplicationProvider):
 
         fields = self.inspect(page)
 
-        answers = {}
-
-        for item in prepared_application.answers:
-
-            if (
-                item.answer is not None
-                and not item.requires_user_input
-            ):
-
-                if item.normalized_key:
-                    answers[
-                        item.normalized_key
-                    ] = item.answer
-
-                answers[
-                    item.question
-                ] = item.answer
-
+        answers = build_verified_answer_map(
+                    prepared_application
+                )
+        
         return fill_application_form(
             page=page,
             fields=fields,
@@ -113,3 +103,13 @@ class GenericApplicationProvider(ApplicationProvider):
             phrase in text
             for phrase in phrases
         )
+
+    def submit(self, page) -> dict:
+        return {
+            "success": False,
+            "clicked": False,
+            "error": (
+                "Automatic submission is not supported "
+                "for generic application providers."
+            ),
+        }

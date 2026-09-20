@@ -162,6 +162,21 @@ def update_application_status(
 
         return application_to_dict(application)
 
+def mark_application_applied(
+    job_id: str,
+    submission_verified: bool,
+) -> dict | None:
+
+    if not submission_verified:
+        raise ValueError(
+            "Cannot mark application as applied "
+            "without verified submission."
+        )
+
+    return update_application_status(
+        job_id=job_id,
+        status="applied",
+    )
 
 def application_to_dict(application: Application) -> dict:
 

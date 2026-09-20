@@ -9,18 +9,14 @@ from linkedin_agent.application_repository import (
     update_application_status,
 )
 from langchain_core.tools import tool
-from typing import List, Dict, Optional
-import json
+from typing import List
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
-from linkedin_agent.browser.application_workflow import fill_prepared_application, open_and_fill_prepared_application
-from linkedin_agent.resume_service import optimize_resume
+from linkedin_agent.browser.application_workflow import open_and_fill_prepared_application
 from linkedin_agent.resume_repository import (
     save_master_resume,
     get_master_resume,
 )
-from linkedin_agent.resume_validator import validate_resume
-import json
 from linkedin_agent.application_service import (
     prepare_application,
 )
